@@ -43,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: your-org/dbt-assignment-grader@main
+      - uses: stephen-thibeault-dbt/dbt-assignment-grader@main
         with:
           level: "1"
           project-path: "."            # path to the dbt project within the repo
