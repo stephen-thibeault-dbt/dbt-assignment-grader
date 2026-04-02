@@ -33,12 +33,11 @@ objectives:
       required_types: ["not_null", "unique"]
 
   - id: has_business_logic_test
-    label: "3–4 tests total, including at least one business logic test (e.g. accepted_values, relationships)"
-    hint: "Add a third test beyond not_null/unique — for example accepted_values, relationships, or a custom generic test. Keep it to 4 tests maximum."
+    label: "At least 3 tests total, including at least one business logic test (e.g. accepted_values, relationships)"
+    hint: "Add a third test beyond not_null/unique — for example accepted_values, relationships, or a custom generic test."
     check:
       type: has_tests
       min: 3
-      max: 4
       min_custom: 1
 
   # ── 3. Documentation ───────────────────────────────────────────────────────
