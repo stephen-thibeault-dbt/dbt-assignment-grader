@@ -2,6 +2,13 @@ id: 1
 title: "Analytics Assignment"
 
 objectives:
+  # ── 0. Compilation ─────────────────────────────────────────────────────────
+  - id: dbt_parses
+    label: "Project parses successfully with the latest dbt-core"
+    hint: "Run 'dbt parse' locally to see Jinja or YAML errors."
+    check:
+      type: dbt_parses
+
   # ── 1. Mart models ─────────────────────────────────────────────────────────
   - id: has_fct_model
     label: "At least one fct_* model exists in models/"

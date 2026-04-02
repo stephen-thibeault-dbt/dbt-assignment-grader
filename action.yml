@@ -59,7 +59,7 @@ runs:
         python-version: "3.12"
 
     - name: Install grader
-      run: pip install --quiet -e ${{ github.action_path }}
+      run: pip install --quiet -e ${{ github.action_path }} dbt-bigquery
       shell: bash
 
     - name: Run grader

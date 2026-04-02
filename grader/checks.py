@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import re
+import subprocess
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, Union
@@ -58,10 +60,14 @@ class HasFreshnessConfig(BaseModel):
     source_name: str
     table_name: str
 
+class DbtParses(BaseModel):
+    type: Literal["dbt_parses"] = "dbt_parses"
+
 
 ObjectiveCheck = Union[
     HasMartModel, HasTests, HasDocumentation, HasWriteup,
     HasRefCall, FileContains, NoHardcodedRefs, HasTest, HasFreshnessConfig,
+    DbtParses,
 ]
 
 
@@ -227,6 +233,44 @@ def run_check(obj: ObjectiveDefinition, project_dir: Path) -> CheckResult:
                 missing = [k for k in ("warn_after", "error_after") if k not in text]
                 return _ok() if not missing else _fail(f"Freshness block missing: {', '.join(missing)}.")
         return _fail(f"No freshness config found for source '{c.source_name}.{c.table_name}'.")
+
+    if c.type == "dbt_parses":
+        dbt_project_file = project_dir / "dbt_project.yml"
+        if not dbt_project_file.exists():
+            return _fail("dbt_project.yml not found.")
+        try:
+            dbt_project = yaml.safe_load(dbt_project_file.read_text()) or {}
+        except Exception as e:
+            return _fail(f"Could not read dbt_project.yml: {e}")
+        profile_name = dbt_project.get("profile", "default")
+        fake_profiles = {
+            profile_name: {
+                "target": "dev",
+                "outputs": {
+                    "dev": {
+                        "type": "bigquery",
+                        "method": "oauth",
+                        "project": "fake-project",
+                        "dataset": "fake_dataset",
+                        "threads": 1,
+                    }
+                },
+            }
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            profiles_path = Path(tmp) / "profiles.yml"
+            profiles_path.write_text(yaml.dump(fake_profiles))
+            result = subprocess.run(
+                ["dbt", "parse", "--profiles-dir", tmp, "--project-dir", str(project_dir), "--no-use-colors"],
+                capture_output=True,
+                text=True,
+            )
+        if result.returncode == 0:
+            return _ok()
+        # Extract the first error line from stderr/stdout for a concise message
+        output = (result.stdout + result.stderr).strip()
+        error_line = next((ln.strip() for ln in output.splitlines() if ln.strip()), output[:200])
+        return _fail(f"dbt parse failed: {error_line}")
 
     return _fail(f"Unknown check type: {c.type}")
 
