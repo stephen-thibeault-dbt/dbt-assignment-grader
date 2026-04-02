@@ -1,0 +1,67 @@
+id: 1
+title: "Analytics Assignment"
+
+objectives:
+  # ── 1. Mart model ──────────────────────────────────────────────────────────
+  - id: has_mart_model
+    label: "At least one fct_* or dim_* model exists in models/"
+    hint: "Create a SQL file named fct_something.sql or dim_something.sql inside your models/ directory."
+    check:
+      type: has_mart_model
+
+  - id: uses_ref
+    label: "Mart model uses ref() to reference upstream models"
+    hint: "Use {{ ref('model_name') }} in your FROM clause instead of querying tables directly."
+    check:
+      type: has_ref_call
+      filename: "models/**/*.sql"
+
+  - id: no_hardcoded_refs
+    label: "No hardcoded schema.table references in mart models"
+    hint: "Replace any direct schema.table references with {{ ref('model_name') }}."
+    check:
+      type: no_hardcoded_refs
+      filename: "models/**/*.sql"
+
+  # ── 2. Tests ───────────────────────────────────────────────────────────────
+  - id: has_key_tests
+    label: "Key column has not_null and unique tests"
+    hint: "In a schema YAML file, add both '- not_null' and '- unique' under your primary key column's tests list."
+    check:
+      type: has_tests
+      min: 2
+      required_types: ["not_null", "unique"]
+
+  - id: has_business_logic_test
+    label: "3–4 tests total, including at least one business logic test (e.g. accepted_values, relationships)"
+    hint: "Add a third test beyond not_null/unique — for example accepted_values, relationships, or a custom generic test. Keep it to 4 tests maximum."
+    check:
+      type: has_tests
+      min: 3
+      max: 4
+      min_custom: 1
+
+  # ── 3. Documentation ───────────────────────────────────────────────────────
+  - id: has_model_description
+    label: "At least one model has a description in a schema YAML file"
+    hint: "In your schema YAML, add 'description: ...' under the model's name field."
+    check:
+      type: has_documentation
+      min_described_models: 1
+
+  - id: has_column_descriptions
+    label: "At least two columns have descriptions"
+    hint: "Under each column entry in your schema YAML, add 'description: ...'."
+    check:
+      type: has_documentation
+      min_described_models: 1
+      min_described_columns: 2
+
+  # ── 4. Write-up ────────────────────────────────────────────────────────────
+  - id: has_writeup
+    label: "WRITEUP.md exists with at least 2 bullet point insights"
+    hint: "Create a WRITEUP.md file. Include 1–2 insights from your model output (use '- ' to start each bullet) and any next steps."
+    check:
+      type: has_writeup
+      filename: WRITEUP.md
+      min_bullet_points: 2
