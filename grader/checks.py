@@ -1,8 +1,10 @@
 """Check type definitions and static file-based implementations."""
 from __future__ import annotations
 
+import os
 import re
 import subprocess
+import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
@@ -63,11 +65,14 @@ class HasFreshnessConfig(BaseModel):
 class DbtParses(BaseModel):
     type: Literal["dbt_parses"] = "dbt_parses"
 
+class DbtFusionParses(BaseModel):
+    type: Literal["dbt_fusion_parses"] = "dbt_fusion_parses"
+
 
 ObjectiveCheck = Union[
     HasMartModel, HasTests, HasDocumentation, HasWriteup,
     HasRefCall, FileContains, NoHardcodedRefs, HasTest, HasFreshnessConfig,
-    DbtParses,
+    DbtParses, DbtFusionParses,
 ]
 
 
@@ -234,7 +239,7 @@ def run_check(obj: ObjectiveDefinition, project_dir: Path) -> CheckResult:
                 return _ok() if not missing else _fail(f"Freshness block missing: {', '.join(missing)}.")
         return _fail(f"No freshness config found for source '{c.source_name}.{c.table_name}'.")
 
-    if c.type == "dbt_parses":
+    if c.type in ("dbt_parses", "dbt_fusion_parses"):
         dbt_project_file = project_dir / "dbt_project.yml"
         if not dbt_project_file.exists():
             return _fail("dbt_project.yml not found.")
@@ -257,20 +262,28 @@ def run_check(obj: ObjectiveDefinition, project_dir: Path) -> CheckResult:
                 },
             }
         }
+        if c.type == "dbt_parses":
+            # Use the dbt installed alongside this Python to avoid picking up Fusion
+            dbt_bin = str(Path(sys.executable).parent / "dbt")
+            label = "dbt parse"
+        else:
+            dbt_bin = os.environ.get("FUSION_DBT_BIN", "")
+            if not dbt_bin or not Path(dbt_bin).exists():
+                return _fail("Fusion binary not found — ensure the 'Install dbt Fusion' action step ran first.")
+            label = "dbt Fusion parse"
         with tempfile.TemporaryDirectory() as tmp:
             profiles_path = Path(tmp) / "profiles.yml"
             profiles_path.write_text(yaml.dump(fake_profiles))
             result = subprocess.run(
-                ["dbt", "parse", "--profiles-dir", tmp, "--project-dir", str(project_dir), "--no-use-colors"],
+                [dbt_bin, "parse", "--profiles-dir", tmp, "--project-dir", str(project_dir), "--no-use-colors"],
                 capture_output=True,
                 text=True,
             )
         if result.returncode == 0:
             return _ok()
-        # Extract the first error line from stderr/stdout for a concise message
         output = (result.stdout + result.stderr).strip()
         error_line = next((ln.strip() for ln in output.splitlines() if ln.strip()), output[:200])
-        return _fail(f"dbt parse failed: {error_line}")
+        return _fail(f"{label} failed: {error_line}")
 
     return _fail(f"Unknown check type: {c.type}")
 

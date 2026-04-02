@@ -9,6 +9,12 @@ objectives:
     check:
       type: dbt_parses
 
+  - id: dbt_fusion_parses
+    label: "Project parses successfully with dbt Fusion"
+    hint: "Run 'dbt parse' locally with dbt Fusion to see any Jinja or YAML errors."
+    check:
+      type: dbt_fusion_parses
+
   # ── 1. Mart models ─────────────────────────────────────────────────────────
   - id: has_fct_model
     label: "At least one fct_* model exists in models/"
