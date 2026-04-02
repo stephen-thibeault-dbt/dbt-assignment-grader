@@ -1,0 +1,73 @@
+name: "dbt Assignment Grader"
+description: "Grade a student's dbt project against an assignment rubric"
+author: "dbt Assignment Grader"
+
+branding:
+  icon: "check-circle"
+  color: "blue"
+
+inputs:
+  level:
+    description: >
+      Assignment rubric to grade against.
+      Accepts the slug form ("level_01") or a bare integer ("1").
+    required: false
+    default: "1"
+
+  project-path:
+    description: >
+      Relative path from the repo root to the student's project directory.
+      Defaults to the repo root.
+    required: false
+    default: "."
+
+  fail-on-incomplete:
+    description: >
+      When "true", the action exits with code 1 if any checks fail.
+      Set to "false" for feedback-only runs that should not block merges.
+    required: false
+    default: "true"
+
+outputs:
+  passed:
+    description: '"true" if all checks passed, "false" otherwise'
+    value: ${{ steps.run_grader.outputs.passed }}
+
+  passed-count:
+    description: "Number of checks that passed"
+    value: ${{ steps.run_grader.outputs['passed-count'] }}
+
+  total-count:
+    description: "Total number of checks in the rubric"
+    value: ${{ steps.run_grader.outputs['total-count'] }}
+
+  level-id:
+    description: "Numeric level id"
+    value: ${{ steps.run_grader.outputs['level-id'] }}
+
+  failed-objectives:
+    description: >
+      Comma-separated ids of checks that did not pass.
+      Empty string when all checks pass.
+    value: ${{ steps.run_grader.outputs['failed-objectives'] }}
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install grader
+      run: pip install --quiet -e ${{ github.action_path }}
+      shell: bash
+
+    - name: Run grader
+      id: run_grader
+      run: python -m grader.main
+      shell: bash
+      env:
+        GRADER_LEVEL: ${{ inputs.level }}
+        GRADER_PROJECT_PATH: ${{ inputs.project-path }}
+        GRADER_GITHUB_TOKEN: ${{ github.token }}
+        GRADER_FAIL_ON_INCOMPLETE: ${{ inputs.fail-on-incomplete }}
