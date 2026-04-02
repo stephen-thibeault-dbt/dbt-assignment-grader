@@ -34,6 +34,7 @@ on:
   pull_request:
 
 permissions:
+  contents: read
   pull-requests: write   # required to post/update the PR comment
 
 jobs:

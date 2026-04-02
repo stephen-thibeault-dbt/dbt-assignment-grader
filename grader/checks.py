@@ -259,6 +259,8 @@ def _collect_tests(project_dir: Path) -> list[str]:
     tests: list[str] = []
     for data in _schema_yamls(project_dir):
         for model in data.get("models", []):
+            if not isinstance(model, dict):
+                continue
             for col in model.get("columns", []):
                 for t in col.get("tests", []):
                     tests.append(t if isinstance(t, str) else next(iter(t)))
@@ -270,6 +272,8 @@ def _collect_documentation(project_dir: Path) -> tuple[int, int]:
     models_with_desc = cols_with_desc = 0
     for data in _schema_yamls(project_dir):
         for model in data.get("models", []):
+            if not isinstance(model, dict):
+                continue
             if str(model.get("description", "")).strip():
                 models_with_desc += 1
             for col in model.get("columns", []):
