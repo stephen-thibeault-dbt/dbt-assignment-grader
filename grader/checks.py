@@ -217,7 +217,7 @@ def run_check(obj: ObjectiveDefinition, project_dir: Path) -> CheckResult:
 
     if c.type == "has_test":
         for path in project_dir.rglob("*.yml"):
-            if "target" in path.parts or any(p.startswith(".") for p in path.parts):
+            if _EXCLUDED_DIRS & set(path.parts) or any(p.startswith(".") for p in path.parts):
                 continue
             text = path.read_text()
             if c.model_name not in text:
@@ -231,7 +231,7 @@ def run_check(obj: ObjectiveDefinition, project_dir: Path) -> CheckResult:
 
     if c.type == "has_freshness_config":
         for path in project_dir.rglob("*.yml"):
-            if "target" in path.parts or any(p.startswith(".") for p in path.parts):
+            if _EXCLUDED_DIRS & set(path.parts) or any(p.startswith(".") for p in path.parts):
                 continue
             text = path.read_text()
             if f"name: {c.source_name}" in text and f"name: {c.table_name}" in text and "freshness" in text:
@@ -304,11 +304,13 @@ def _resolve_files(filename: str, project_dir: Path) -> list[Path]:
 def _strip_comments(sql: str) -> str:
     return re.sub(r"--.*$", "", sql, flags=re.MULTILINE)
 
+_EXCLUDED_DIRS = {"target", "dbt_packages"}
+
 def _schema_yamls(project_dir: Path):
     for path in project_dir.rglob("*.yml"):
         if not path.is_file():
             continue
-        if "target" in path.parts or any(p.startswith(".") for p in path.parts):
+        if _EXCLUDED_DIRS & set(path.parts) or any(p.startswith(".") for p in path.parts):
             continue
         try:
             yield yaml.safe_load(path.read_text()) or {}
