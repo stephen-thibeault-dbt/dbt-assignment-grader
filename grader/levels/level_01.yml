@@ -2,12 +2,20 @@ id: 1
 title: "Analytics Assignment"
 
 objectives:
-  # ── 1. Mart model ──────────────────────────────────────────────────────────
-  - id: has_mart_model
-    label: "At least one fct_* or dim_* model exists in models/"
-    hint: "Create a SQL file named fct_something.sql or dim_something.sql inside your models/ directory."
+  # ── 1. Mart models ─────────────────────────────────────────────────────────
+  - id: has_fct_model
+    label: "At least one fct_* model exists in models/"
+    hint: "Create a SQL file named fct_something.sql inside your models/ directory."
     check:
       type: has_mart_model
+      prefix: "fct_"
+
+  - id: has_dim_model
+    label: "At least one dim_* model exists in models/"
+    hint: "Create a SQL file named dim_something.sql inside your models/ directory."
+    check:
+      type: has_mart_model
+      prefix: "dim_"
 
   - id: uses_ref
     label: "Mart model uses ref() to reference upstream models"
