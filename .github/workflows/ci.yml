@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install grader
+        run: pip install -e .
+
+      - name: Verify package and rubric load
+        run: |
+          python - <<'EOF'
+          from grader.main import load_level
+          spec = load_level("1")
+          print(f"Level {spec.id}: {spec.title}")
+          print(f"  {len(spec.objectives)} objectives:")
+          for obj in spec.objectives:
+              print(f"    [{obj.check.type}] {obj.label}")
+          EOF
