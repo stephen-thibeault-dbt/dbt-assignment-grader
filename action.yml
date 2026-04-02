@@ -62,6 +62,12 @@ runs:
       run: pip install --quiet -e ${{ github.action_path }} dbt-bigquery
       shell: bash
 
+    - name: Install dbt packages
+      run: |
+        cd ${{ github.workspace }}/${{ inputs.project-path }}
+        dbt deps --profiles-dir /dev/null 2>/dev/null || true
+      shell: bash
+
     - name: Run grader
       id: run_grader
       run: python -m grader.main
