@@ -77,3 +77,27 @@ runs:
         GRADER_PROJECT_PATH: ${{ inputs.project-path }}
         GRADER_GITHUB_TOKEN: ${{ github.token }}
         GRADER_FAIL_ON_INCOMPLETE: ${{ inputs.fail-on-incomplete }}
+
+    - name: dbt Fusion parse
+      run: |
+        curl -fsSL https://public.cdn.getdbt.com/fs/install/install.sh | sh -s -- --update
+        export PATH="$HOME/.local/bin:$HOME/.dbt/bin:$PATH"
+
+        PROJECT_DIR="${{ github.workspace }}/${{ inputs.project-path }}"
+        PROFILE=$(python3 -c "import yaml; print(yaml.safe_load(open('$PROJECT_DIR/dbt_project.yml'))['profile'])")
+
+        TMPDIR=$(mktemp -d)
+        cat > "$TMPDIR/profiles.yml" << EOF
+        ${PROFILE}:
+          target: dev
+          outputs:
+            dev:
+              type: bigquery
+              method: oauth
+              project: fake-project
+              dataset: fake_dataset
+              threads: 1
+        EOF
+
+        dbt parse --profiles-dir "$TMPDIR" --project-dir "$PROJECT_DIR" --no-use-colors
+      shell: bash
