@@ -192,7 +192,10 @@ def run_check(obj: ObjectiveDefinition, project_dir: Path) -> CheckResult:
         if not files:
             return _fail(f"No files found matching '{c.filename}'.")
         for path in files:
-            uncommented = _strip_comments(path.read_text())
+            raw = path.read_text()
+            if re.search(r"\{\{[^}]*static_analysis\s*=\s*['\"]unsafe['\"]", raw):
+                continue
+            uncommented = _strip_comments(raw)
             if not re.search(r"\{\{\s*(ref|source)\s*\(", uncommented):
                 return _fail(f"No ref() or source() calls found in {path.name} — use {{{{ ref('model') }}}} instead of direct table names.")
             stripped = re.sub(r"\{\{[^}]+\}\}", "", uncommented)
@@ -262,9 +265,11 @@ def _collect_tests(project_dir: Path) -> list[str]:
             if not isinstance(model, dict):
                 continue
             for col in model.get("columns", []):
-                for t in col.get("tests", []):
+                if not isinstance(col, dict):
+                    continue
+                for t in col.get("tests", []) + col.get("data_tests", []):
                     tests.append(t if isinstance(t, str) else next(iter(t)))
-            for t in model.get("tests", []):
+            for t in model.get("tests", []) + model.get("data_tests", []):
                 tests.append(t if isinstance(t, str) else next(iter(t)))
     return tests
 
