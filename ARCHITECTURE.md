@@ -1,15 +1,16 @@
 # dbt Assignment Grader — Architecture
 
-A GitHub Action that statically checks a student's dbt project against a rubric. No dbt execution, no database — just file inspection.
+A GitHub Action that checks a student's dbt project against a rubric. Combines static file inspection with lightweight dbt parsing (no query execution, no live database connection).
 
 ---
 
 ## How it works
 
-1. The action checks out the student's repo and installs the grader package.
-2. `grader/main.py` reads the assignment rubric from a YAML file.
-3. For each objective, `grader/checks.py` inspects files in the student's project directory.
-4. Results are written to the GitHub step summary, action outputs, and optionally a PR comment.
+1. The action installs the grader package and `dbt-bigquery`.
+2. `dbt deps` is run in the student's project to install declared packages.
+3. The dbt Fusion binary is installed and its path exported to `$FUSION_DBT_BIN`.
+4. `grader/main.py` loads the assignment rubric and runs each check via `grader/checks.py`.
+5. Results are written to the GitHub step summary, action outputs, and optionally a PR comment.
 
 ---
 
@@ -33,15 +34,23 @@ pyproject.toml    — package metadata (pydantic, pyyaml only)
 
 | Type | What it checks |
 |------|---------------|
-| `has_mart_model` | At least one `fct_*` or `dim_*` `.sql` file exists under `models/` |
-| `has_tests` | Test count and types in schema YAML files (min/max, required types, min business logic tests) |
+| `has_mart_model` | A `fct_*` or `dim_*` `.sql` file exists under `models/` (configurable via `prefix`) |
+| `has_tests` | Test count and types in schema YAML (min, required types, min business logic tests — no upper limit) |
 | `has_documentation` | Models and/or columns have `description:` fields in schema YAML |
 | `has_writeup` | A markdown file exists with a minimum number of bullet points |
-| `has_ref_call` | A specific `{{ ref('model') }}` call appears in a SQL file |
+| `has_ref_call` | A `{{ ref('model') }}` call appears in a SQL file |
 | `file_contains` | A regex pattern matches anywhere in a file |
-| `no_hardcoded_refs` | No `schema.table` references after FROM/JOIN (ref() required) |
+| `no_hardcoded_refs` | No `schema.table` references after FROM/JOIN; files with `{{ config(static_analysis='unsafe') }}` are skipped |
 | `has_test` | A specific test type exists on a specific column in schema YAML |
 | `has_freshness_config` | A source table has `warn_after` and `error_after` freshness config |
+| `dbt_parses` | Project parses successfully using the pip-installed `dbt-core` + `dbt-bigquery` with a fake BigQuery profile |
+| `dbt_fusion_parses` | Project parses successfully using the dbt Fusion binary (`$FUSION_DBT_BIN`) with a fake BigQuery profile |
+
+**Notes:**
+- Tests are collected from both `tests:` and `data_tests:` keys (supporting dbt <1.8 and ≥1.8 syntax).
+- `dbt_packages/` and `target/` directories are excluded from all YAML scans so installed package tests don't pollute the results.
+- Files with `{{ config(static_analysis='unsafe') }}` (e.g. metricflow time spine) are exempt from the `no_hardcoded_refs` check.
+- Both parse checks create a temp `profiles.yml` using a fake BigQuery connection — no credentials or database access required.
 
 `run_check(objective, project_dir)` dispatches to the correct implementation and returns a `CheckResult(passed, reason)`.
 
@@ -75,11 +84,13 @@ To create a new assignment, add a new `level_NN.yml` and pass `level: N` in the 
 
 ## `action.yml`
 
-Composite action (no Docker). Runs on the GitHub-hosted runner:
+Steps run on the GitHub-hosted runner in order:
 
 1. `actions/setup-python@v5` — Python 3.12
-2. `pip install -e ${{ github.action_path }}` — installs the grader (deps from `pyproject.toml`)
-3. `python -m grader.main` (`id: run_grader`) — runs the grader; hyphenated outputs are exposed via bracket notation in `action.yml` (`outputs['passed-count']`, etc.)
+2. **Install grader** — `pip install -e ${{ github.action_path }} dbt-bigquery`
+3. **Install dbt packages** — `dbt deps` in the student's project directory (tolerates missing `packages.yml`)
+4. **Install dbt Fusion** — downloads the Fusion binary via the official install script; writes the binary path to `$GITHUB_ENV` as `FUSION_DBT_BIN`
+5. **Run grader** — `python -m grader.main`; hyphenated outputs exposed via bracket notation (`outputs['passed-count']`, etc.)
 
 ---
 
