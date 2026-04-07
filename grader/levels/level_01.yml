@@ -79,9 +79,11 @@ objectives:
 
   # ── 4. Write-up ────────────────────────────────────────────────────────────
   - id: has_writeup
-    label: "WRITEUP.md exists with at least 2 bullet point insights"
-    hint: "Create a WRITEUP.md file. Include 1–2 insights from your model output (use '- ' to start each bullet) and any next steps."
+    label: "README.md includes 'Insights:' and 'Next steps:' sections"
+    hint: "In your README.md, add an 'Insights:' section and a 'Next steps:' section."
     check:
       type: has_writeup
-      filename: WRITEUP.md
-      min_bullet_points: 2
+      filename: README.md
+      required_sections:
+        - "Insights:"
+        - "Next steps:"

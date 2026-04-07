@@ -35,7 +35,8 @@ class HasDocumentation(BaseModel):
 class HasWriteup(BaseModel):
     type: Literal["has_writeup"] = "has_writeup"
     filename: str = "WRITEUP.md"
-    min_bullet_points: int = 1
+    min_bullet_points: int = 0
+    required_sections: list[str] = []  # e.g. ["Insights:", "Next steps:"]
 
 class HasRefCall(BaseModel):
     type: Literal["has_ref_call"] = "has_ref_call"
@@ -161,13 +162,18 @@ def run_check(obj: ObjectiveDefinition, project_dir: Path) -> CheckResult:
     if c.type == "has_writeup":
         path = project_dir / c.filename
         if not path.exists():
-            return _fail(f"'{c.filename}' not found. Create it with bullet point insights.")
+            return _fail(f"'{c.filename}' not found.")
         content = path.read_text()
         if not content.strip():
             return _fail(f"'{c.filename}' is empty.")
-        bullets = sum(1 for line in content.splitlines() if re.match(r"^\s*[-*]\s+\S", line))
-        if bullets < c.min_bullet_points:
-            return _fail(f"Found {bullets} bullet point(s), need at least {c.min_bullet_points}.")
+        if c.min_bullet_points:
+            bullets = sum(1 for line in content.splitlines() if re.match(r"^\s*[-*]\s+\S", line))
+            if bullets < c.min_bullet_points:
+                return _fail(f"Found {bullets} bullet point(s), need at least {c.min_bullet_points}.")
+        if c.required_sections:
+            missing = [s for s in c.required_sections if s.lower() not in content.lower()]
+            if missing:
+                return _fail(f"Missing section(s) in {c.filename}: {', '.join(missing)}")
         return _ok()
 
     if c.type == "has_ref_call":
